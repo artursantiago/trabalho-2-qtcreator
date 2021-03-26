@@ -13,7 +13,7 @@
 class Trem: public QThread{
  Q_OBJECT
 public:
-    Trem(int,int,int,int);  //construtor
+    Trem(int,int,int,int,void (*progress)(int,int));  //construtor
     void run();         //função a ser executada pela thread
     void mudarVelocidade(int velocidade); // função para alterar velociadade
 
@@ -27,6 +27,7 @@ private:
    int y;           //posição Y do trem na tela
    int ID;          //ID do trem
    int velocidade;  //Velocidade. É o tempo de dormir em milisegundos entre a mudança de posição do trem
+   void (*progress)(int,int); // Fafsafqa
 };
 
 #endif // TREM_H
