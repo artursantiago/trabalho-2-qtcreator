@@ -14,7 +14,18 @@ int breakTrem[5]; //Linha em que o trem tá parado
 
 int is_on = false;
 
+
+
 void ocuparStation(int id, int linha);
+
+bool avoidDeadlockTrem1(int linhaLocal);
+bool avoidDeadlockTrem2(int linhaLocal);
+bool avoidDeadlockTrem3(int linhaLocal);
+bool avoidDeadlockTrem4(int linhaLocal);
+bool avoidDeadlockTrem5(int linhaLocal);
+
+bool (*avoidDeadlockTrem[5])(int);
+
 void liberarStation(int id, int linha);
 void liberarTremParado(int id, int linha);
 
@@ -23,6 +34,7 @@ void progressTrem2(int x, int y);
 void progressTrem3(int x, int y);
 void progressTrem4(int x, int y);
 void progressTrem5(int x, int y);
+
 
 void verifySpeed(int speed, Trem *trem);
 
@@ -38,6 +50,13 @@ MainWindow::MainWindow(QWidget *parent) :
        sem_init(&trens[i], 0, 1);
        sem_wait(&trens[i]);
     }
+
+    avoidDeadlockTrem[0] = &avoidDeadlockTrem1;
+    avoidDeadlockTrem[1] = &avoidDeadlockTrem2;
+    avoidDeadlockTrem[2] = &avoidDeadlockTrem3;
+    avoidDeadlockTrem[3] = &avoidDeadlockTrem4;
+    avoidDeadlockTrem[4] = &avoidDeadlockTrem5;
+
 
     sem_init(&mutex, 0, 1);
 
@@ -154,6 +173,7 @@ void verifySpeed(int speed, Trem *trem) {
     }
 }
 
+/* Funções para liberação e ocupação dos trilhos */
 
 void ocuparStation(int id, int linha){
     int localTrem= id-1;
@@ -161,7 +181,7 @@ void ocuparStation(int id, int linha){
 
     sem_wait(&mutex);//down(&mutex); /* entra na regiao critica */
 
-    if (ocupacaoStation[linhaLocal] == VAZIO) {
+    if (ocupacaoStation[linhaLocal] == VAZIO && (*avoidDeadlockTrem[id-1])(linhaLocal)) {
         ocupacaoStation[linhaLocal] = id; /* registra que trem entrou na região*/
         sem_post(&trens[localTrem]); /*up(&s[i]); */
     }else{
@@ -182,7 +202,6 @@ void liberarStation(int id, int linha){
     sem_post(&mutex);//up(&mutex);  /* sai da regiao cri­tica */
 }
 
-
 void liberarTremParado(int id, int linha){
     int linhaLocal = linha -1;
     int trem = lastFreeStation[linhaLocal];
@@ -190,7 +209,7 @@ void liberarTremParado(int id, int linha){
 
     do{
 
-        if(breakTrem[trem] == linha && trem != id){
+        if(breakTrem[trem] == linha && trem != id && (*avoidDeadlockTrem[trem])(linhaLocal)){
             breakTrem[trem] = VAZIO; //Indicar que o trem não está preso
             busca = false; //Encerrar while
             lastFreeStation[linhaLocal] = trem; // Último trem liberado no local
@@ -209,6 +228,66 @@ void liberarTremParado(int id, int linha){
 }
 
 
+/* Funções para prevenção do Deadlock */
+bool avoidDeadlockTrem1(int linhaLocal) {
+    if (linhaLocal == 0 && ocupacaoStation[2] == 4 && ocupacaoStation[3] == 2) {
+        return false;
+    }
+    return true;
+}
+
+bool avoidDeadlockTrem2(int linhaLocal) {
+    if (linhaLocal == 3 && ocupacaoStation[0] == 1 && ocupacaoStation[2] == 4) {
+        return false;
+    }
+
+    if (linhaLocal == 1 && ocupacaoStation[5] == 3 &&
+            (ocupacaoStation[4] == 5 || (ocupacaoStation[6] == 5 && ocupacaoStation[3] == 4))) {
+        return false;
+    }
+
+    if (linhaLocal == 4 && ocupacaoStation[6] == 5 && ocupacaoStation[3] == 4) {
+        return false;
+    }
+    return true;
+}
+
+bool avoidDeadlockTrem3(int linhaLocal) {
+    if (linhaLocal == 5 && ocupacaoStation[1] == 2 &&
+            (ocupacaoStation[4] == 5 || (ocupacaoStation[6] == 5 && ocupacaoStation[3] == 4))) {
+        return false;
+    }
+
+    return true;
+}
+
+bool avoidDeadlockTrem4(int linhaLocal) {
+    if (linhaLocal == 2 && ocupacaoStation[0] == 1 &&
+            (ocupacaoStation[3] == 2 || (ocupacaoStation[4] == 2 && ocupacaoStation[6] == 5))) {
+        return false;
+    }
+
+    if (linhaLocal == 3 && ocupacaoStation[6] == 5 &&
+            (ocupacaoStation[4] == 2 || (ocupacaoStation[1] == 2 && ocupacaoStation[5] == 3))) {
+        return false;
+    }
+    return true;
+}
+
+bool avoidDeadlockTrem5(int linhaLocal) {
+    if (linhaLocal == 4 && ocupacaoStation[1] == 2 && ocupacaoStation[5] == 3) {
+        return false;
+    }
+
+    if (linhaLocal == 6 && ocupacaoStation[3] == 4 &&
+            (ocupacaoStation[4] == 2 || (ocupacaoStation[1] == 2 && ocupacaoStation[5] == 3))) {
+        return false;
+    }
+    return true;
+}
+
+
+/* Funções para verificar movimento do trem */
 void progressTrem1(int x, int y){
     if(x==330 && y==30){
         ocuparStation(1, 1);//Solicita linha 1
