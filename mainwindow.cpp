@@ -5,7 +5,7 @@
 
 #define VAZIO 0
 
-sem_t station[7]; //um semaforo por filosofo
+sem_t station[7]; //um semaforo por regiao critica
 sem_t mutex;//exclusao mutua para regioes cri­ticas
 
 int ocupacaoStation[7];
@@ -18,6 +18,8 @@ void progressTrem2(int x, int y);
 void progressTrem3(int x, int y);
 void progressTrem4(int x, int y);
 void progressTrem5(int x, int y);
+
+void verifySpeed(int speed, Trem *trem);
 
 
 
@@ -35,7 +37,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     //Cria o trem com seu (ID, posição X, posição Y)
     trem1 = new Trem(1,130,30, ui->speed_trem1->value(), &progressTrem1);
-    trem2 = new Trem(2,330,30, ui->speed_trem2->value(), &progressTrem2);
+    trem2 = new Trem(2,430,150, ui->speed_trem2->value(), &progressTrem2);
     trem3 = new Trem(3,530,30, ui->speed_trem3->value(), &progressTrem3);
     trem4 = new Trem(4,230,150, ui->speed_trem4->value(), &progressTrem4);
     trem5 = new Trem(5,430,150, ui->speed_trem5->value(), &progressTrem5);
@@ -111,36 +113,52 @@ void MainWindow::on_pushButton_2_clicked()
 
 void MainWindow::on_speed_trem1_valueChanged(int value)
 {
-    trem1->mudarVelocidade(value);
+    verifySpeed(value, trem1);
 }
 
 void MainWindow::on_speed_trem2_valueChanged(int value)
 {
-    trem2->mudarVelocidade(value);
+    verifySpeed(value, trem2);
 }
 
 void MainWindow::on_speed_trem3_valueChanged(int value)
 {
-    trem3->mudarVelocidade(value);
+    verifySpeed(value, trem3);
 }
 
 void MainWindow::on_speed_trem4_valueChanged(int value)
 {
-    trem4->mudarVelocidade(value);
+    verifySpeed(value, trem4);
 }
 
 void MainWindow::on_speed_trem5_valueChanged(int value)
 {
-    trem5->mudarVelocidade(value);
+    verifySpeed(value, trem5);
+}
+
+void verifySpeed(int speed, Trem *trem) {
+    if (speed <= 0) {
+        trem->terminate();
+    } else {
+        trem->start();
+        trem->mudarVelocidade(speed);
+    }
 }
 
 
 void ocuparStation(int id, int linha){
     sem_wait(&mutex);//down(&mutex); /* entra na regiao critica */
 
+    printf("Trem%d\n", id);
+    printf("linha = %d\n", linha + 1);
+    printf("ocupacaoStation[%d] = %d\n", linha, ocupacaoStation[linha]);
+
     if (ocupacaoStation[linha] == VAZIO) {
+        printf("VAZIA\n");
         ocupacaoStation[linha] = id; /* registra que trem entrou na região*/
-        sem_post(&station[linha]); /* */
+        sem_post(&station[linha]); /*up(&s[i]); */
+    } else {
+        printf("OCUPADA\n");
     }
 
 
@@ -150,18 +168,21 @@ void ocuparStation(int id, int linha){
 
 void liberarStation(int linha){
     sem_wait(&mutex);//down(&mutex); /* entra na regiao critica */
+
     ocupacaoStation[linha] = VAZIO; /* registra que trem entrou na região*/
-    sem_post(&station[linha]);//up(&mutex);  /* sai da regiao cri­tica */
+
+    sem_post(&station[linha]);///* up(&s[i]); */
     sem_post(&mutex);//up(&mutex);  /* sai da regiao cri­tica */
 }
 
 
 void progressTrem1(int x, int y){
+//    sem_wait(&station[1]);
     if(x==330 && y==30){
         ocuparStation(1, 0);//Solicita linha 1
     }
     if(x==330 && y==150){
-        ocuparStation(1, 2);//Solicita linha 1//Solicita linha 3
+        ocuparStation(1, 2);//Solicita linha 3
     }
     if(x==310 && y==150){
         liberarStation(0); // Libera linha 1
@@ -203,11 +224,11 @@ void progressTrem3(int x, int y){
     if(x==630 && y==150){
         //Solicita linha 2
     }
-    if(x==530 && y==130){
-        //Libera linha 2
-    }
     if(x==530 && y==150){
         //Solicita linha 6
+    }
+    if(x==530 && y==130){
+        //Libera linha 2
     }
     if(x==550 && y==30){
         //Libera linha 6
