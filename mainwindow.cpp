@@ -10,6 +10,8 @@ sem_t mutex;//exclusao mutua para regioes cri­ticas
 
 int ocupacaoStation[7];
 
+int is_on = false;
+
 void liberarStation(int linha);
 void ocuparStation(int id, int linha);
 
@@ -91,6 +93,7 @@ MainWindow::~MainWindow()
  */
 void MainWindow::on_pushButton_clicked()
 {
+    is_on = true;
     trem1->start();
     trem2->start();
     trem3->start();
@@ -103,6 +106,7 @@ void MainWindow::on_pushButton_clicked()
  */
 void MainWindow::on_pushButton_2_clicked()
 {
+    is_on = false;
     trem1->terminate();
     trem2->terminate();
     trem3->terminate();
@@ -139,7 +143,7 @@ void MainWindow::on_speed_trem5_valueChanged(int value)
 void verifySpeed(int speed, Trem *trem) {
     if (speed <= 0) {
         trem->terminate();
-    } else {
+    } else if (is_on) {
         trem->start();
         trem->mudarVelocidade(speed);
     }
@@ -154,13 +158,9 @@ void ocuparStation(int id, int linha){
     printf("ocupacaoStation[%d] = %d\n", linha, ocupacaoStation[linha]);
 
     if (ocupacaoStation[linha] == VAZIO) {
-        printf("VAZIA\n");
         ocupacaoStation[linha] = id; /* registra que trem entrou na região*/
         sem_post(&station[linha]); /*up(&s[i]); */
-    } else {
-        printf("OCUPADA\n");
     }
-
 
     sem_post(&mutex);//up(&mutex);  /* sai da regiao cri­tica */
     sem_wait(&station[linha]);//down(&s[i]); /* bloqueia se linha estiver ocupada */
@@ -177,7 +177,6 @@ void liberarStation(int linha){
 
 
 void progressTrem1(int x, int y){
-//    sem_wait(&station[1]);
     if(x==330 && y==30){
         ocuparStation(1, 0);//Solicita linha 1
     }
@@ -234,8 +233,6 @@ void progressTrem3(int x, int y){
         //Libera linha 6
     }
 }
-
-
 
 void progressTrem4(int x, int y){
     if(x==230 && y==170){
