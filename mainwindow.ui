@@ -23,8 +23,11 @@
       <height>17</height>
      </rect>
     </property>
+    <property name="contextMenuPolicy">
+     <enum>Qt::DefaultContextMenu</enum>
+    </property>
     <property name="styleSheet">
-     <string notr="true">QLabel { background: red}</string>
+     <string notr="true">QLabel { background: blue}</string>
     </property>
     <property name="text">
      <string>T1</string>
@@ -395,14 +398,14 @@
    <widget class="QLabel" name="label_trem3">
     <property name="geometry">
      <rect>
-      <x>530</x>
+      <x>560</x>
       <y>30</y>
       <width>21</width>
       <height>17</height>
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true">QLabel { background: red}</string>
+     <string notr="true">QLabel { background: green}</string>
     </property>
     <property name="text">
      <string>T3</string>
@@ -418,7 +421,7 @@
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true">QLabel { background: red}</string>
+     <string notr="true">QLabel { background: purple}</string>
     </property>
     <property name="text">
      <string>T4</string>
@@ -434,7 +437,7 @@
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true">QLabel { background: red}</string>
+     <string notr="true">QLabel { background: orange}</string>
     </property>
     <property name="text">
      <string>T5</string>

@@ -5,15 +5,18 @@
 
 #define VAZIO 0
 
-sem_t station[7]; //um semaforo por regiao critica
+sem_t trens[5]; //um para cada trem
 sem_t mutex;//exclusao mutua para regioes cri­ticas
 
 int ocupacaoStation[7];
+int lastFreeStation[7]; //Último trem liberado na linha de conflito
+int breakTrem[5]; //Linha em que o trem tá parado
 
 int is_on = false;
 
-void liberarStation(int linha);
 void ocuparStation(int id, int linha);
+void liberarStation(int id, int linha);
+void liberarTremParado(int id, int linha);
 
 void progressTrem1(int x, int y);
 void progressTrem2(int x, int y);
@@ -31,15 +34,17 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    for(int i= 0; i < 5 ;i++ ){
+       sem_init(&trens[i], 0, 1);
+       sem_wait(&trens[i]);
+    }
+
     sem_init(&mutex, 0, 1);
-//    for(int i= 0; i < 7 ;i++ ){
-//       sem_init(&station[i], 0, 1);
-//    }
 
 
     //Cria o trem com seu (ID, posição X, posição Y)
     trem1 = new Trem(1,130,30, ui->speed_trem1->value(), &progressTrem1);
-    trem2 = new Trem(2,430,150, ui->speed_trem2->value(), &progressTrem2);
+    trem2 = new Trem(2,330,30, ui->speed_trem2->value(), &progressTrem2);
     trem3 = new Trem(3,530,30, ui->speed_trem3->value(), &progressTrem3);
     trem4 = new Trem(4,230,150, ui->speed_trem4->value(), &progressTrem4);
     trem5 = new Trem(5,430,150, ui->speed_trem5->value(), &progressTrem5);
@@ -151,132 +156,159 @@ void verifySpeed(int speed, Trem *trem) {
 
 
 void ocuparStation(int id, int linha){
+    int localTrem= id-1;
+    int linhaLocal = linha -1;
+
     sem_wait(&mutex);//down(&mutex); /* entra na regiao critica */
 
-    printf("Trem%d\n", id);
-    printf("linha = %d\n", linha + 1);
-    printf("ocupacaoStation[%d] = %d\n", linha, ocupacaoStation[linha]);
-
-    if (ocupacaoStation[linha] == VAZIO) {
-        ocupacaoStation[linha] = id; /* registra que trem entrou na região*/
-        sem_post(&station[linha]); /*up(&s[i]); */
+    if (ocupacaoStation[linhaLocal] == VAZIO) {
+        ocupacaoStation[linhaLocal] = id; /* registra que trem entrou na região*/
+        sem_post(&trens[localTrem]); /*up(&s[i]); */
+    }else{
+        breakTrem[localTrem] = linha;
     }
 
     sem_post(&mutex);//up(&mutex);  /* sai da regiao cri­tica */
-    sem_wait(&station[linha]);//down(&s[i]); /* bloqueia se linha estiver ocupada */
+    sem_wait(&trens[localTrem]);//down(&s[i]); /* bloqueia se linha estiver ocupada */
 }
 
-void liberarStation(int linha){
+void liberarStation(int id, int linha){
+    int linhaLocal = linha -1;
+
     sem_wait(&mutex);//down(&mutex); /* entra na regiao critica */
+    ocupacaoStation[linhaLocal] = VAZIO; /* registra que trem entrou na região*/
+    liberarTremParado(id-1, linha);
 
-    ocupacaoStation[linha] = VAZIO; /* registra que trem entrou na região*/
-
-    sem_post(&station[linha]);///* up(&s[i]); */
     sem_post(&mutex);//up(&mutex);  /* sai da regiao cri­tica */
+}
+
+
+void liberarTremParado(int id, int linha){
+    int linhaLocal = linha -1;
+    int trem = lastFreeStation[linhaLocal];
+    int busca = true;
+
+    do{
+
+        if(breakTrem[trem] == linha && trem != id){
+            breakTrem[trem] = VAZIO; //Indicar que o trem não está preso
+            busca = false; //Encerrar while
+            lastFreeStation[linhaLocal] = trem; // Último trem liberado no local
+            sem_post(&trens[trem]); /*up(&s[i]); */
+        }
+
+
+        //Modificar posicao do trem
+        if(trem>3){
+            trem = 0;
+        }else{
+            trem++;
+        }
+
+    }while(trem != lastFreeStation[linhaLocal]  && busca);
 }
 
 
 void progressTrem1(int x, int y){
     if(x==330 && y==30){
-        ocuparStation(1, 0);//Solicita linha 1
+        ocuparStation(1, 1);//Solicita linha 1
     }
     if(x==330 && y==150){
-        ocuparStation(1, 2);//Solicita linha 3
+        ocuparStation(1, 3);//Solicita linha 3
     }
-    if(x==310 && y==150){
-        liberarStation(0); // Libera linha 1
+    if(x==290 && y==150){
+        liberarStation(1,1); // Libera linha 1
     }
-    if(x==210 && y==150){
-        liberarStation(2);//Libera linha 3
+    if(x==190 && y==150){
+        liberarStation(1,3);//Libera linha 3
     }
 }
 
 void progressTrem2(int x, int y){
     if(x==530 && y==30){
-        ocuparStation(2, 1);//Solicita linha 2
+        ocuparStation(2, 2);//Solicita linha 2
     }
     if(x==530 && y==150){
-        ocuparStation(2, 4);//Solicita linha 5
+        ocuparStation(2, 5);//Solicita linha 5
     }
     if(x==430 && y==150){
-        ocuparStation(2, 3);//Solicita linha 4
+        ocuparStation(2, 4);//Solicita linha 4
     }
     if(x==330 && y==150){
-        ocuparStation(2, 0);//Solicita linha 1
+        ocuparStation(2, 1);//Solicita linha 1
     }
 
-    if(x==510 && y==150){
-        liberarStation(1);//Libera linha 2
+    if(x==490 && y==150){
+        liberarStation(2,2);//Libera linha 2
     }
-    if(x==410 && y==150){
-        liberarStation(4);//Libera linha 5
+    if(x==390 && y==150){
+        liberarStation(2,5);//Libera linha 5
     }
-    if(x==330 && y==130){
-        liberarStation(3);//Libera linha 4
+    if(x==330 && y==110){
+        liberarStation(2,4);//Libera linha 4
     }
-    if(x==350 && y==30){
-        liberarStation(0); // Libera linha 1
+    if(x==370 && y==30){
+       liberarStation(2,1); // Libera linha 1
     }
 }
 
 void progressTrem3(int x, int y){
-    if(x==630 && y==150){
-        //Solicita linha 2
-    }
     if(x==530 && y==150){
-        //Solicita linha 6
+       ocuparStation(3,2); //Solicita linha 2
     }
-    if(x==530 && y==130){
-        //Libera linha 2
+    if(x==630 && y==150){
+        ocuparStation(3,6);//Solicita linha 6
     }
-    if(x==550 && y==30){
-        //Libera linha 6
+    if(x==570 && y==30){
+        liberarStation(3,2);//Libera linha 2
+    }
+    if(x==530 && y==110){
+        liberarStation(3,6);//Libera linha 6
     }
 }
 
 void progressTrem4(int x, int y){
-    if(x==230 && y==170){
-        //Solicita linha 3
+    if(x==230 && y==150){
+        ocuparStation(4,3);//Solicita linha 3
     }
     if(x==330 && y==150){
-        //Solicita linha 4
+        ocuparStation(4,4);//Solicita linha 4
     }
     if(x==430 && y==150){
-        //Solicita linha 7
+        ocuparStation(4,7);//Solicita linha 7
     }
 
 
-    if(x==350 && y==150){
-        //Libera linha 3
+    if(x==370 && y==150){
+        liberarStation(4,3);//Libera linha 3
     }
-    if(x==430 && y==170){
-        //Libera linha 4
+    if(x==430 && y==190){
+        liberarStation(4,4);//Libera linha 4
     }
-    if(x==410 && y==270){
-        //Libera linha 7
+    if(x==390 && y==270){
+        liberarStation(4,7);//Libera linha 7
     }
 }
 
 void progressTrem5(int x, int y){
-
     if(x==430 && y==150){
-        //Solicita linha 5
+        ocuparStation(5,5);//Solicita linha 5
     }
     if(x==530 && y==150){
-        //Solicita linha 6
+        ocuparStation(5,6);//Solicita linha 6
     }
     if(x==430 && y==270){
-        //Solicita linha 7
+        ocuparStation(5,7);//Solicita linha 7
     }
 
 
-    if(x==550 && y==150){
-        //Libera linha 5
+    if(x==570 && y==150){
+        liberarStation(5,5);//Libera linha 5
     }
-    if(x==630 && y==170){
-        //Libera linha 6
+    if(x==630 && y==190){
+        liberarStation(5,6);//Libera linha 6
     }
-    if(x==450 && y==150){
-        //Libera linha 7
+    if(x==470 && y==150){
+        liberarStation(5,7);//Libera linha 7
     }
 }
