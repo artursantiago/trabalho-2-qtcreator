@@ -12,7 +12,7 @@ int ocupacaoStation[7];
 int lastFreeStation[7]; //Último trem liberado na linha de conflito
 int breakTrem[5]; //Linha em que o trem tá parado
 
-int is_on = false;
+int is_on = true;
 
 
 
@@ -67,6 +67,7 @@ MainWindow::MainWindow(QWidget *parent) :
     trem3 = new Trem(3,530,30, ui->speed_trem3->value(), &progressTrem3);
     trem4 = new Trem(4,230,150, ui->speed_trem4->value(), &progressTrem4);
     trem5 = new Trem(5,430,150, ui->speed_trem5->value(), &progressTrem5);
+
 
     /*
      * Conecta o sinal UPDATEGUI à função UPDATEINTERFACE.
@@ -165,10 +166,7 @@ void MainWindow::on_speed_trem5_valueChanged(int value)
 }
 
 void verifySpeed(int speed, Trem *trem) {
-    if (speed <= 0) {
-        trem->terminate();
-    } else if (is_on) {
-        trem->start();
+    if (is_on) {
         trem->mudarVelocidade(speed);
     }
 }
@@ -230,7 +228,16 @@ void liberarTremParado(int id, int linha){
 
 /* Funções para prevenção do Deadlock */
 bool avoidDeadlockTrem1(int linhaLocal) {
-    if (linhaLocal == 0 && ocupacaoStation[2] == 4 && ocupacaoStation[3] == 2) {
+    if (linhaLocal == 0 && ocupacaoStation[2] == 4 &&
+            (ocupacaoStation[3] == 2 || (ocupacaoStation[4] == 2 && ocupacaoStation[6] == 5))) {
+        return false;
+    }
+
+    if (linhaLocal == 0
+        && ocupacaoStation[1] == 2
+        && ocupacaoStation[5] == 3
+        && ocupacaoStation[6] == 5
+        && ocupacaoStation[2] == 4) {
         return false;
     }
     return true;
@@ -246,7 +253,16 @@ bool avoidDeadlockTrem2(int linhaLocal) {
         return false;
     }
 
-    if (linhaLocal == 4 && ocupacaoStation[6] == 5 && ocupacaoStation[3] == 4) {
+    if (linhaLocal == 4 && ocupacaoStation[6] == 5
+            && (ocupacaoStation[3] == 4 || (ocupacaoStation[0] == 1 && ocupacaoStation[2] == 4))) {
+        return false;
+    }
+
+    if (linhaLocal == 1
+        && ocupacaoStation[0] == 1
+        && ocupacaoStation[5] == 3
+        && ocupacaoStation[6] == 5
+        && ocupacaoStation[2] == 4) {
         return false;
     }
     return true;
@@ -258,6 +274,13 @@ bool avoidDeadlockTrem3(int linhaLocal) {
         return false;
     }
 
+    if (linhaLocal == 5
+        && ocupacaoStation[0] == 1
+        && ocupacaoStation[1] == 2
+        && ocupacaoStation[6] == 5
+        && ocupacaoStation[2] == 4) {
+        return false;
+    }
     return true;
 }
 
@@ -271,6 +294,14 @@ bool avoidDeadlockTrem4(int linhaLocal) {
             (ocupacaoStation[4] == 2 || (ocupacaoStation[1] == 2 && ocupacaoStation[5] == 3))) {
         return false;
     }
+
+    if (linhaLocal == 2
+        && ocupacaoStation[0] == 1
+        && ocupacaoStation[1] == 2
+        && ocupacaoStation[6] == 5
+        && ocupacaoStation[5] == 3) {
+        return false;
+    }
     return true;
 }
 
@@ -279,10 +310,23 @@ bool avoidDeadlockTrem5(int linhaLocal) {
         return false;
     }
 
-    if (linhaLocal == 6 && ocupacaoStation[3] == 4 &&
-            (ocupacaoStation[4] == 2 || (ocupacaoStation[1] == 2 && ocupacaoStation[5] == 3))) {
-        return false;
+    if (linhaLocal == 6 ) {
+        if(ocupacaoStation[3] == 4 &&
+                (ocupacaoStation[4] == 2 || (ocupacaoStation[1] == 2 && ocupacaoStation[5] == 3))){
+            return false;
+        }
+        if(ocupacaoStation[0] == 1 && ocupacaoStation[2] == 4 && ocupacaoStation[4] == 2){
+            return false;
+        }
+
+        if (ocupacaoStation[0] == 1
+            && ocupacaoStation[1] == 2
+            && ocupacaoStation[2] == 4
+            && ocupacaoStation[5] == 3) {
+            return false;
+        }
     }
+
     return true;
 }
 

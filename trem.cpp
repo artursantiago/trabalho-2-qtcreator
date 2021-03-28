@@ -15,6 +15,9 @@ Trem::Trem(int ID, int x, int y, int velocidade, void (*progress)(int, int)){
 //Função a ser executada após executar trem->START
 void Trem::run(){
     while(true){
+        if (velocidade == 200) {
+            continue;
+        }
         switch(ID){
         case 1://Trem 1
             if (y == 30 && x <330)
